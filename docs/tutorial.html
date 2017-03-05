@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Tutorial for radmixture</title>
+    <meta charset="utf-8">
+    <meta name="author" content="Beilei Bian" />
+    <link rel="stylesheet" href="tutorial.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Tutorial for radmixture
+### Beilei Bian
+### 2017/03/05
+
+---
+
+
+
+
+# What is radmixture?
+
+- radmixture is an R package for ancestry analysis. It can be used for both researchers and
+customers who have their own genotype raw data.
+
+- This package provides K13 dataset from Dodecad project and E11 dataset.
+
+- If you brought DNA services from DTC companies and have raw data as follow, you can calculate ancestry components with the two datasets in this package conveniently. 
+
+```
+#&gt;          rsid chromosome position genotype
+#&gt; 1  rs12564807          1   734462       AA
+#&gt; 2   rs3131972          1   752721       AG
+#&gt; 3 rs148828841          1   760998       CC
+#&gt; 4  rs12124819          1   776546       AG
+#&gt; 5 rs115093905          1   787173       GG
+#&gt; 6  rs11240777          1   798959       AG
+```
+- Besides, radmixture can also be used in research for both supervised and unsupervised learning similar to ADMIXTURE.
+
+---
+class: center, middle
+background-image: url(http://www.supercoloring.com/sites/default/files/silhouettes/2015/05/evolution-of-man-black-silhouette.svg)
+
+.rimg[![](pic/RStudio.png)]
+---
+### Usage
+
+You can install:
+
+- the latest development version from github with
+
+```r
+devtools::install_github("wegene-llc/radmixture")
+```
+
+And then
+
+
+```r
+library(radmixture)
+```
+
+.blue[Wait for CRAN release!]
+
+---
+class: center, middle, inverse
+
+# Calculate your ancestry components with public datasets
+### .pink[Use your genotype raw data]
+---
+### Prepare your raw data
+
+Before doing calculation, you must prepare your raw data like this:
+
+```
+#&gt;          rsid chromosome position genotype
+#&gt; 1  rs12564807          1   734462       AA
+#&gt; 2   rs3131972          1   752721       AG
+#&gt; 3 rs148828841          1   760998       CC
+#&gt; 4  rs12124819          1   776546       AG
+#&gt; 5 rs115093905          1   787173       GG
+#&gt; 6  rs11240777          1   798959       AG
+```
+
+&lt;p&gt;&lt;span style="color:red;"&gt;&lt;strong&gt;Pay Attention!&lt;/strong&gt;&lt;/span&gt; Each line must have four fields separated by whitespace: SNPID CHROMOSOME POSITION GENOTYPE&lt;/p&gt;
+Please organize your raw data like this. If your raw data have headers, remove it.
+
+Two functions will help you calculate your result.
+
+- `tfrdpub()`: Transfer your raw data to a format understood by radmixture.
+- `fFixQN()`: Calculate your ancestry components result.
+
+---
+### For example
+
+- Step1: Read your raw data into R with
+```r
+genotype &lt;- read.table(file = 'path/to/file')
+# genotype &lt;- read.csv(file = 'path/to/file')
+```
+
+- Step2: Transfer your raw data
+```r
+# if you use K13
+res &lt;- tfrdpub(genotype, 13, global13.alleles, global13.13.F)
+# if you use E11
+res &lt;- tfrdpub(genotype, 11, e11.alleles, e11.11.F)
+```
+- Step3: Calculate
+```r
+# K13
+ances &lt;- fFixQN(res$g, res$q, res$f, 1e-4, 'BR', pubdata = "K13")
+# E11
+ances &lt;- fFixQN(res$g, res$q, res$f, 1e-4, 'BR', pubdata = "E11")
+```
+- Step4: `ances$q` is your result.
+---
+class: center, middle, inverse
+
+# Calculate ancestry components with your own reference panel
+### .pink[For researchers]
+---
+### Quick Start
+- Prepare genotype matrix:
+
+| Individual ID | SNP1 | SNP2 | ... | SNPj|
+|:-------------:|:--:|:--:|:--:|:--:|
+|   1           |  0 | 2  | ... | 1 |
+|   2           |  0 | 0  | ... | 2 |
+|   3           |  1 | 0  | ... | 1 |
+
+- If you have PED file like this:
+
+.ped[![](pic/ped.png)]
+---
+You can use `generateG()` to transfer ped file to G matrix that radmixture uses.
+```r
+g &lt;- generateG(ped)
+```
+- Initialize Q and F matrix
+After getting G matrix, radmixture could help you initialize Q and F matrix.
+
+.red[Pay Attention:] If want to do supervised learning here, you must prepare a pop file. Each line of pop should be a string designating the population. Use "-" to represent unknown individual(must be the last one in pop). Here is an example:
+
+| pop |
+|:---:|
+| East_Asian|
+| European|
+| European|
+| East_Asian|
+|Afrian|
+|-|
+
+```r
+# read pop file into R(for supervised learning)
+pop &lt;- read.table("path/to/file")
+# for supervised learning
+qf &lt;- initQF(g, pop, model = "supervised")
+# for unsupervised learning, you must choose K! Q and F will be generated randomly.
+qf &lt;- initQF(g, K, model = "unsupervised")
+```
+---
+- Calculate
+
+Use `qn()` to calculate the result.
+```r
+# for supervised learning
+res &lt;- qn(g, q, f, tol = 1e-4, "BR", "supervised")
+# for unsupervised learning
+res &lt;- qn(g, q, f, tol = 1e-4, "BR", "unsupervised")
+```
+
+And `res$q` is the final result.
+---
+class: center, middle, inverse
+
+# Q &amp; A
+
+---
+- How long should I wait for the admixture analysis?
+    - If you use public dataset, you just need to wait about less than 30s to get your result.
+    - If you use your own reference panel, it depends on the number of individuals you use, the number of SNPs and the number of populations. The computational complexity here is `\(n * K * p\)`.
+    
+- Besides K13 and E11, are there any other datasets I can use?
+    - To keep the size of this package small, we didn't involve many datasets in it. You can go to [Dodecad Project](http://dodecad.blogspot.com) get more information.
+---
+
+### Contributions
+
+Any types of suggestions are welcome. Including but not limited to finding a better initial value for optimizaion which is very helpful to speed up the convergence, improving code performance in R...
+
+Report bug issues on [issue page](https://github.com/wegene-llc/radmixture/issues).
+
+We welcome contributions on radmixture. You can fork this repo and make your changes and submit a pull request.
+---
+class: center, middle, inverse
+# Thanks
+###Beilei Bian
+###bianbeilei@wegene.com
+    </textarea>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true
+});
+if (window.HTMLWidgets) slideshow.on('showSlide', function (slide) {setTimeout(function() {window.dispatchEvent(new Event('resize'));}, 100)});</script>
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+  tex2jax: {
+    skipTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+  }
+});
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
